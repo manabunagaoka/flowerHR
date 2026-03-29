@@ -1,0 +1,11 @@
+{
+  "name": "jd-to-skill",
+  "version": "0.1.0",
+  "description": "Converts a Job Description + daily tasks into a structured SKILL.md",
+  "author": "manabunagaoka",
+  "plugin": "flowerHR",
+  "mcp_compatible": true,
+  "inputs": ["job_title", "job_description", "daily_tasks", "employee_name"],
+  "outputs": ["SKILL.md"],
+  "endpoint": "/api/generate-skill"
+}

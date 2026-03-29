@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic-settings
+openai
+anthropic
+python-multipart
+pdfplumber
+python-docx
