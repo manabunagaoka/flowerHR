@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import FlowerLogo from "@/components/FlowerLogo";
+// Text-only branding — no FlowerLogo
 
-type Step = "upload" | "parsing" | "template" | "generating" | "result";
+type Step = "upload" | "parsing" | "template" | "tasks" | "parsing_tasks" | "generating" | "result";
 type Mode = "upload" | "manual";
 
 interface Task {
@@ -50,6 +50,49 @@ const emptyTask = (id: number): Task => ({
   tools_systems: "", file_paths: "", contacts: "", kpi: "",
   automation_potential: "unknown",
 });
+
+const SAMPLE_TEMPLATE: Template = {
+  job_title: "Senior Marketing Manager, Consumer Products",
+  department: "Marketing & Sales",
+  employee_name: "Tanaka Yuki",
+  summary: "Lead consumer product marketing strategy across APAC region. Responsible for brand positioning, retail partnerships, go-to-market execution, and quarterly business reviews. Reports to VP of Marketing.",
+  projects: [
+    {
+      id: 1, name: "Retail Distribution & Partnerships",
+      description: "Manage relationships with retail partners and optimize product placement across physical and digital channels.",
+      tasks: [
+        { id: 1, name: "Weekly sell-through reporting", description: "Pull sell-through data by retailer and region, compare against forecast, flag variances > 10% to VP.", frequency: "Weekly (Monday)", tools_systems: "SAP, Excel, Power BI", file_paths: "/shared/reports/sell-through/", contacts: "Rosemarie (NYC HQ), Distribution team", kpi: "Report delivered by Tuesday noon, variance accuracy > 95%", automation_potential: "unknown" },
+        { id: 2, name: "Retailer QBR preparation", description: "Prepare quarterly business review decks for top 5 retail partners with sales trends, inventory status, and promotional ROI.", frequency: "Quarterly", tools_systems: "PowerPoint, SAP, Salesforce", file_paths: "/shared/QBR/retail/", contacts: "Account managers, Finance team", kpi: "Deck ready 5 days before QBR, partner satisfaction score > 4.2", automation_potential: "unknown" },
+        { id: 3, name: "New retailer onboarding", description: "Evaluate potential retail partners, negotiate terms, coordinate product listing setup.", frequency: "As needed (3-5 per year)", tools_systems: "Salesforce, DocuSign, SAP", file_paths: "/shared/partnerships/new/", contacts: "Legal, Supply Chain, Account team", kpi: "Onboarding completed within 30 days of signed agreement", automation_potential: "unknown" },
+      ],
+    },
+    {
+      id: 2, name: "Marketing Campaigns & Brand",
+      description: "Plan and execute integrated marketing campaigns across digital and traditional channels to drive brand awareness and sales.",
+      tasks: [
+        { id: 1, name: "Campaign brief & agency coordination", description: "Write creative briefs for seasonal campaigns, manage agency timelines, review deliverables.", frequency: "Monthly", tools_systems: "Asana, Google Docs, Figma", file_paths: "/shared/campaigns/briefs/", contacts: "Creative agency (Dentsu), Internal design team", kpi: "Campaign launch on time, within budget (+/- 5%)", automation_potential: "unknown" },
+        { id: 2, name: "Digital marketing performance tracking", description: "Monitor paid/organic performance across Google Ads, Meta, and LINE. Optimize spend allocation weekly.", frequency: "Weekly", tools_systems: "Google Ads, Meta Business Suite, LINE Ads, Google Analytics", file_paths: "/shared/reports/digital/", contacts: "Digital agency, Media buyer", kpi: "ROAS > 4.0, CPA below target by channel", automation_potential: "unknown" },
+        { id: 3, name: "Content calendar management", description: "Maintain editorial calendar for social media, blog, and email. Coordinate with PR for press releases.", frequency: "Weekly updates, monthly planning", tools_systems: "Notion, Hootsuite, Mailchimp", file_paths: "/shared/content/calendar/", contacts: "PR team, Content writers, Social media manager", kpi: "100% on-time publication rate, engagement rate > 3%", automation_potential: "unknown" },
+      ],
+    },
+    {
+      id: 3, name: "Sales Forecasting & P&L",
+      description: "Own the product-level P&L and collaborate with finance on revenue forecasting and budget management.",
+      tasks: [
+        { id: 1, name: "Monthly P&L review", description: "Reconcile actuals vs. budget for consumer products division. Identify cost overruns and revenue shortfalls.", frequency: "Monthly", tools_systems: "SAP, Excel, NetSuite", file_paths: "/shared/finance/P&L/", contacts: "Finance controller, VP Marketing", kpi: "Report submitted by 5th business day, variance explanation for items > $10K", automation_potential: "unknown" },
+        { id: 2, name: "Demand planning input", description: "Provide marketing-informed demand signals to supply chain for production planning. Adjust for promotions and seasonality.", frequency: "Bi-weekly", tools_systems: "SAP APO, Excel", file_paths: "/shared/supply-chain/demand/", contacts: "Supply chain planner, Production manager", kpi: "Forecast accuracy > 85% at SKU level", automation_potential: "unknown" },
+      ],
+    },
+  ],
+  qualifications: [
+    "Bachelor's degree in Marketing, Business, or related field",
+    "7+ years of experience in consumer products marketing",
+    "Strong analytical skills with proficiency in SAP and Excel",
+    "Experience managing agency relationships and campaign budgets",
+    "Fluent in English and Japanese",
+  ],
+  skills_mentioned: ["SAP", "Excel", "Power BI", "Salesforce", "Google Ads", "Asana", "PowerPoint"],
+};
 
 function AutoTextarea({ value, onChange, className, placeholder }: {
   value: string;
@@ -102,7 +145,7 @@ function AiPolishButton({ text, onPolished }: { text: string; onPolished: (v: st
       onClick={handlePolish}
       disabled={loading || !text.trim()}
       title="AI: fix grammar, spelling, and optimize"
-      className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all disabled:opacity-20 hover:bg-rose-100 text-rose-400 hover:text-rose-600"
+      className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all disabled:opacity-20 hover:bg-[#2a2a2a] text-[#8b9a6b] hover:text-[#b5c48e]"
     >
       {loading ? (
         <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -128,12 +171,21 @@ export default function Home() {
   const [dailyTasks, setDailyTasks] = useState("");
   const [employeeName, setEmployeeName] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [taskFile, setTaskFile] = useState<File | null>(null);
   const [template, setTemplate] = useState<Template | null>(null);
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [skillMd, setSkillMd] = useState("");
   const [error, setError] = useState("");
 
+  const loadSample = () => {
+    setTemplate(SAMPLE_TEMPLATE);
+    setJobTitle(SAMPLE_TEMPLATE.job_title);
+    setEmployeeName(SAMPLE_TEMPLATE.employee_name);
+    setStep("tasks");
+  };
+
+  // Step 1: Parse JD
   const handleParse = async () => {
     setError("");
     setStep("parsing");
@@ -161,13 +213,91 @@ export default function Home() {
       setTemplate(data);
       setJobTitle(data.job_title);
       if (data.employee_name) setEmployeeName(data.employee_name);
-      setStep("template");
+      setStep("tasks");
     } catch (e: any) {
       setError(e.message || "Failed to parse JD");
       setStep("upload");
     }
   };
 
+  // Step 2: Upload task doc
+  const handleUploadTasks = async () => {
+    if (!taskFile || !template) return;
+    setError("");
+    setStep("parsing_tasks");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", taskFile);
+      const res = await fetch(`${API}/api/parse-task-doc`, { method: "POST", body: formData });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+
+      // Merge uploaded tasks into existing template
+      if (data.projects && data.projects.length > 0) {
+        setTemplate({
+          ...template,
+          projects: data.projects.map((p: any, i: number) => ({
+            ...p,
+            id: p.id || i + 1,
+            tasks: (p.tasks || []).map((t: any, j: number) => ({
+              ...emptyTask(j + 1),
+              ...t,
+              id: t.id || j + 1,
+            })),
+          })),
+        });
+      }
+      setStep("tasks");
+    } catch (e: any) {
+      setError(e.message || "Failed to parse task document");
+      setStep("tasks");
+    }
+  };
+
+  // Download task template
+  const handleDownloadTaskTemplate = async () => {
+    if (!template) return;
+    try {
+      const res = await fetch(`${API}/api/generate-task-template`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...template, employee_name: employeeName || null }),
+      });
+      if (!res.ok) throw new Error("Failed to generate template");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Tasks_Template_${(employeeName || jobTitle).replace(/\s+/g, "_")}.docx`;
+      a.click();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Generate all outputs
+  const handleGenerate = async () => {
+    if (!template) return;
+    setStep("generating");
+    setError("");
+
+    try {
+      const res = await fetch(`${API}/api/generate-skill`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...template, employee_name: employeeName || null }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setSkillMd(await res.text());
+      setStep("result");
+    } catch (e: any) {
+      setError(e.message || "Failed to generate SKILL.md");
+      setStep("tasks");
+    }
+  };
+
+  // Template editing helpers
   const updateTask = (projectId: number, taskId: number, field: string, value: string) => {
     if (!template) return;
     setTemplate({
@@ -235,23 +365,24 @@ export default function Home() {
   const getTotalTasks = () =>
     template?.projects.reduce((sum, p) => sum + p.tasks.length, 0) ?? 0;
 
-  const handleGenerate = async () => {
+  // Download handlers
+  const handleDownloadJd = async () => {
     if (!template) return;
-    setStep("generating");
-    setError("");
-
     try {
-      const res = await fetch(`${API}/api/generate-skill`, {
+      const res = await fetch(`${API}/api/download-jd-docx`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...template, employee_name: employeeName || null }),
       });
-      if (!res.ok) throw new Error(await res.text());
-      setSkillMd(await res.text());
-      setStep("result");
-    } catch (e: any) {
-      setError(e.message || "Failed to generate SKILL.md");
-      setStep("template");
+      if (!res.ok) throw new Error("Failed to generate docx");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `JD_${(employeeName || jobTitle).replace(/\s+/g, "_")}.docx`;
+      a.click();
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -264,48 +395,44 @@ export default function Home() {
     a.click();
   };
 
-  const buildJdText = () => {
-    if (!template) return "";
-    let text = `JOB DESCRIPTION\n${"=".repeat(50)}\n\n`;
-    text += `Employee: ${employeeName || "TBD"}\n`;
-    text += `Job Title: ${template.job_title}\n`;
-    text += `Department: ${template.department}\n\n`;
-    text += `Summary:\n${template.summary}\n\n`;
-    text += `${"=".repeat(50)}\n\n`;
-
-    for (const project of template.projects) {
-      text += `PROJECT: ${project.name}\n`;
-      text += `${"-".repeat(40)}\n`;
-      if (project.description) text += `${project.description}\n\n`;
-
-      for (const task of project.tasks) {
-        text += `  TASK: ${task.name}\n`;
-        if (task.description) text += `    Description: ${task.description}\n`;
-        if (task.frequency) text += `    Frequency: ${task.frequency}\n`;
-        if (task.tools_systems) text += `    Tools/Systems: ${task.tools_systems}\n`;
-        if (task.file_paths) text += `    File Locations: ${task.file_paths}\n`;
-        if (task.contacts) text += `    Key Contacts: ${task.contacts}\n`;
-        if (task.kpi) text += `    KPI: ${task.kpi}\n`;
-        text += "\n";
-      }
-      text += "\n";
+  const handleDownloadTasksDocx = async () => {
+    if (!template) return;
+    try {
+      const res = await fetch(`${API}/api/download-tasks-docx`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...template, employee_name: employeeName || null }),
+      });
+      if (!res.ok) throw new Error("Failed to generate docx");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Tasks_${(employeeName || jobTitle).replace(/\s+/g, "_")}.docx`;
+      a.click();
+    } catch (e) {
+      console.error(e);
     }
-
-    if (template.qualifications.length > 0) {
-      text += `QUALIFICATIONS\n${"-".repeat(40)}\n`;
-      template.qualifications.forEach((q) => (text += `- ${q}\n`));
-    }
-    return text;
   };
 
-  const handleDownloadJd = () => {
-    const text = buildJdText();
-    const blob = new Blob([text], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `JD_${(employeeName || jobTitle).replace(/\s+/g, "_")}.txt`;
-    a.click();
+  const handleDownloadTasksJson = async () => {
+    if (!template) return;
+    try {
+      const res = await fetch(`${API}/api/download-tasks-json`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...template, employee_name: employeeName || null }),
+      });
+      if (!res.ok) throw new Error("Failed to generate JSON");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Tasks_${(employeeName || jobTitle).replace(/\s+/g, "_")}.json`;
+      a.click();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleReset = () => {
@@ -314,65 +441,68 @@ export default function Home() {
     setSkillMd("");
     setExpandedTask(null);
     setConfirmDelete(null);
+    setTaskFile(null);
     setError("");
   };
 
-  const stepLabels = ["Upload JD", "Fill Template", "SKILL.md"];
-  const stepIndex = step === "upload" || step === "parsing" ? 0 : step === "template" ? 1 : 2;
+  const stepLabels = ["JD Input", "Projects / Tasks", "Results"];
+  const stepIndex =
+    step === "upload" || step === "parsing" ? 0
+    : step === "tasks" || step === "parsing_tasks" || step === "template" ? 1
+    : 2;
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-blue-50">
+    <main className="min-h-screen bg-[#141414] text-gray-200">
       {/* Header */}
-      <header className="border-b border-gray-100 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+      <header className="border-b border-[#2a2a2a] bg-[#1a1a1a]/90 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <FlowerLogo size={36} />
             <div>
-              <h1 className="text-xl font-bold text-gray-900 tracking-tight">flowerHR</h1>
-              <p className="text-xs text-gray-400">JD + Tasks &rarr; SKILL.md</p>
+              <h1 className="text-xl font-bold text-white tracking-tight">JD / <em className="italic text-[#8b9a6b]">Skills</em></h1>
+              <p className="text-xs text-[#666] uppercase tracking-widest">Cadence by Manaboodle</p>
             </div>
           </div>
           {step !== "upload" && (
-            <button onClick={handleReset} className="text-sm text-gray-400 hover:text-gray-600">
+            <button onClick={handleReset} className="text-sm text-[#666] hover:text-[#8b9a6b] transition-colors">
               Start over
             </button>
           )}
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className={`mx-auto px-6 py-8 ${step === "result" ? "max-w-7xl" : "max-w-5xl"}`}>
         {/* Progress */}
         <div className="flex items-center justify-center gap-2 mb-10">
           {stepLabels.map((label, i) => (
             <div key={label} className="flex items-center gap-2">
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                i === stepIndex ? "bg-rose-100 text-rose-700"
-                  : i < stepIndex ? "bg-green-100 text-green-700"
-                  : "bg-gray-100 text-gray-400"
+                i === stepIndex ? "bg-[#2a2a2a] text-[#8b9a6b] border border-[#3a3a3a]"
+                  : i < stepIndex ? "bg-[#2a2a2a] text-[#8b9a6b]"
+                  : "bg-[#1e1e1e] text-[#555]"
               }`}>
                 <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                  i === stepIndex ? "bg-rose-200 text-rose-800"
-                    : i < stepIndex ? "bg-green-200 text-green-800"
-                    : "bg-gray-200 text-gray-400"
+                  i === stepIndex ? "bg-[#8b9a6b] text-[#141414]"
+                    : i < stepIndex ? "bg-[#8b9a6b]/30 text-[#8b9a6b]"
+                    : "bg-[#252525] text-[#555]"
                 }`}>
                   {i < stepIndex ? "\u2713" : i + 1}
                 </span>
                 {label}
               </div>
               {i < stepLabels.length - 1 && (
-                <div className={`w-8 h-px ${i < stepIndex ? "bg-green-300" : "bg-gray-200"}`} />
+                <div className={`w-8 h-px ${i < stepIndex ? "bg-[#8b9a6b]/40" : "bg-[#2a2a2a]"}`} />
               )}
             </div>
           ))}
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl p-4 mb-6">
+          <div className="bg-red-900/30 border border-red-800/50 text-red-400 text-sm rounded-xl p-4 mb-6">
             {error}
           </div>
         )}
 
-        {/* Step 1: Upload */}
+        {/* ───── Step 1: JD Input ───── */}
         {step === "upload" && (
           <div className="space-y-6">
             <div className="flex gap-2 justify-center">
@@ -380,8 +510,8 @@ export default function Home() {
                 onClick={() => setMode("upload")}
                 className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
                   mode === "upload"
-                    ? "bg-rose-500 text-white shadow-md shadow-rose-200"
-                    : "bg-white text-gray-500 border border-gray-200 hover:border-rose-200"
+                    ? "bg-[#8b9a6b] text-[#141414]"
+                    : "bg-[#1e1e1e] text-[#8a8278] border border-[#333] hover:border-[#8b9a6b]/50"
                 }`}
               >
                 Upload Document
@@ -390,21 +520,21 @@ export default function Home() {
                 onClick={() => setMode("manual")}
                 className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
                   mode === "manual"
-                    ? "bg-rose-500 text-white shadow-md shadow-rose-200"
-                    : "bg-white text-gray-500 border border-gray-200 hover:border-rose-200"
+                    ? "bg-[#8b9a6b] text-[#141414]"
+                    : "bg-[#1e1e1e] text-[#8a8278] border border-[#333] hover:border-[#8b9a6b]/50"
                 }`}
               >
                 Manual Entry
               </button>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-5">
+            <div className="bg-[#1a1a1a] rounded-2xl border border-[#2a2a2a] p-8 space-y-5">
               {mode === "upload" ? (
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1.5">Job Description Document</label>
+                  <label className="block text-sm font-medium text-[#9a9284] mb-1.5">Job Description Document</label>
                   <label
                     htmlFor="file-upload"
-                    className="block border-2 border-dashed border-gray-200 hover:border-rose-300 rounded-xl p-10 text-center cursor-pointer transition-all"
+                    className="block border-2 border-dashed border-[#333] hover:border-[#8b9a6b]/50 rounded-xl p-10 text-center cursor-pointer transition-all"
                   >
                     <input
                       type="file"
@@ -415,18 +545,18 @@ export default function Home() {
                     />
                     {file ? (
                       <div>
-                        <p className="text-sm font-medium text-rose-600">{file.name}</p>
-                        <p className="text-xs text-gray-400 mt-1">Click to change</p>
+                        <p className="text-sm font-medium text-[#8b9a6b]">{file.name}</p>
+                        <p className="text-xs text-[#666] mt-1">Click to change</p>
                       </div>
                     ) : (
                       <div>
-                        <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-rose-50 flex items-center justify-center">
-                          <svg className="w-6 h-6 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-[#8b9a6b]/10 flex items-center justify-center">
+                          <svg className="w-6 h-6 text-[#8b9a6b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                           </svg>
                         </div>
-                        <p className="text-sm text-gray-500">Drop a <strong>.docx</strong> or <strong>.pdf</strong></p>
-                        <p className="text-xs text-gray-400 mt-1">Company JD templates supported</p>
+                        <p className="text-sm text-[#9a9284]">Drop a <strong className="text-white">.docx</strong> or <strong className="text-white">.pdf</strong></p>
+                        <p className="text-xs text-[#666] mt-1">Company JD templates supported</p>
                       </div>
                     )}
                   </label>
@@ -434,28 +564,28 @@ export default function Home() {
               ) : (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1.5">Job Title</label>
+                    <label className="block text-sm font-medium text-[#9a9284] mb-1.5">Job Title</label>
                     <input
-                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-rose-300"
+                      className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#8b9a6b]/40 focus:border-[#8b9a6b]/60 placeholder-[#555]"
                       placeholder="e.g. Senior Marketing Manager"
                       value={jobTitle}
                       onChange={(e) => setJobTitle(e.target.value)}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1.5">Job Description</label>
+                    <label className="block text-sm font-medium text-[#9a9284] mb-1.5">Job Description</label>
                     <textarea
-                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm h-36 resize-none focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-rose-300"
+                      className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-2.5 text-sm text-white h-36 resize-none focus:outline-none focus:ring-2 focus:ring-[#8b9a6b]/40 focus:border-[#8b9a6b]/60 placeholder-[#555]"
                       placeholder="Paste the full job description here..."
                       value={jobDescription}
                       onChange={(e) => setJobDescription(e.target.value)}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1.5">Day-to-Day Tasks</label>
-                    <p className="text-xs text-gray-400 mb-1.5">One task per line</p>
+                    <label className="block text-sm font-medium text-[#9a9284] mb-1.5">Day-to-Day Tasks</label>
+                    <p className="text-xs text-[#666] mb-1.5">One task per line</p>
                     <textarea
-                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm h-36 font-mono resize-none focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-rose-300"
+                      className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-2.5 text-sm text-white h-36 font-mono resize-none focus:outline-none focus:ring-2 focus:ring-[#8b9a6b]/40 focus:border-[#8b9a6b]/60 placeholder-[#555]"
                       placeholder={"Manage editorial calendar\nBrief agency on campaigns\nReport monthly to VP on KPIs"}
                       value={dailyTasks}
                       onChange={(e) => setDailyTasks(e.target.value)}
@@ -467,9 +597,15 @@ export default function Home() {
               <button
                 onClick={handleParse}
                 disabled={mode === "upload" ? !file : !jobTitle || !jobDescription || !dailyTasks}
-                className="w-full bg-gradient-to-r from-rose-500 to-pink-500 text-white py-3 rounded-xl font-medium hover:from-rose-600 hover:to-pink-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-md shadow-rose-200"
+                className="w-full bg-[#8b9a6b] hover:bg-[#9aab78] text-[#141414] py-3 rounded-xl font-semibold disabled:opacity-30 disabled:cursor-not-allowed transition-all"
               >
-                Parse JD into Template
+                Next: Extract Roles &amp; Responsibilities
+              </button>
+              <button
+                onClick={loadSample}
+                className="w-full text-[#555] hover:text-[#8b9a6b] py-2 text-sm font-medium transition-all"
+              >
+                Load Sample (demo)
               </button>
             </div>
           </div>
@@ -477,23 +613,29 @@ export default function Home() {
 
         {/* Parsing spinner */}
         {step === "parsing" && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-16 text-center">
-            <div className="animate-spin w-10 h-10 mx-auto mb-4">
-              <FlowerLogo size={40} />
-            </div>
-            <p className="text-gray-500 text-sm">Parsing job description into template...</p>
+          <div className="bg-[#1a1a1a] rounded-2xl border border-[#2a2a2a] p-16 text-center">
+            <div className="w-10 h-10 mx-auto mb-4 rounded-full border-2 border-[#333] border-t-[#8b9a6b] animate-spin" />
+            <p className="text-[#8a8278] text-sm">Extracting roles and responsibilities from JD...</p>
           </div>
         )}
 
-        {/* Step 2: Template */}
-        {step === "template" && template && (
+        {/* ───── Step 2: Projects / Tasks ───── */}
+        {step === "tasks" && template && (
           <div className="space-y-6">
-            {/* Employee name — top of template */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            {/* Info banner */}
+            <div className="bg-[#c4a55a]/8 border border-[#c4a55a]/20 rounded-xl p-4">
+              <p className="text-sm text-[#c4a55a]">
+                <strong>AI found {template.projects.length} responsibility areas</strong> from the JD.
+                Add detailed projects and tasks below, or download a template to fill in offline.
+              </p>
+            </div>
+
+            {/* Employee name + JD header info */}
+            <div className="bg-[#1a1a1a] rounded-2xl border border-[#2a2a2a] p-6">
               <div className="mb-4">
-                <label className="block text-xs font-medium text-gray-500 mb-1">Employee Name</label>
+                <label className="block text-xs font-medium text-[#8a8278] mb-1">Employee Name</label>
                 <input
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-rose-200"
+                  className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-[#8b9a6b]/40 placeholder-[#555]"
                   placeholder="Enter employee name"
                   value={employeeName}
                   onChange={(e) => setEmployeeName(e.target.value)}
@@ -501,17 +643,17 @@ export default function Home() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Job Title</label>
+                  <label className="block text-xs font-medium text-[#8a8278] mb-1">Job Title</label>
                   <input
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-rose-200"
+                    className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-[#8b9a6b]/40 placeholder-[#555]"
                     value={template.job_title}
                     onChange={(e) => setTemplate({ ...template, job_title: e.target.value })}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Department</label>
+                  <label className="block text-xs font-medium text-[#8a8278] mb-1">Department</label>
                   <input
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-200"
+                    className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#8b9a6b]/40 placeholder-[#555]"
                     value={template.department}
                     onChange={(e) => setTemplate({ ...template, department: e.target.value })}
                   />
@@ -520,9 +662,9 @@ export default function Home() {
               <div className="mt-4">
                 <div className="flex items-start gap-2">
                   <div className="flex-1">
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Role Summary</label>
+                    <label className="block text-xs font-medium text-[#8a8278] mb-1">Role Summary</label>
                     <AutoTextarea
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-rose-200"
+                      className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-sm text-white resize-none focus:outline-none focus:ring-2 focus:ring-[#8b9a6b]/40 placeholder-[#555]"
                       value={template.summary}
                       onChange={(v) => setTemplate({ ...template, summary: v })}
                     />
@@ -532,27 +674,67 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-              <div className="mt-3 text-xs text-gray-400">
+              <div className="mt-3 text-xs text-[#666]">
                 {template.projects.length} projects, {getTotalTasks()} total tasks
               </div>
             </div>
 
-            {/* Projects */}
+            {/* Upload / Template download bar */}
+            <div className="bg-[#1a1a1a] rounded-2xl border border-[#2a2a2a] p-6">
+              <p className="text-xs text-[#8a8278] uppercase tracking-wide font-medium mb-4">Import Tasks</p>
+              <div className="flex gap-3 items-center">
+                <button
+                  onClick={handleDownloadTaskTemplate}
+                  className="flex items-center gap-2 bg-[#1e1e1e] border border-[#333] hover:border-[#8b9a6b]/50 text-[#9a9284] hover:text-[#8b9a6b] px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Download Template (.docx)
+                </button>
+                <div className="text-xs text-[#444]">or</div>
+                <label className="flex items-center gap-2 bg-[#1e1e1e] border border-[#333] hover:border-[#8b9a6b]/50 text-[#9a9284] hover:text-[#8b9a6b] px-4 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  {taskFile ? taskFile.name : "Upload Filled Template"}
+                  <input
+                    type="file"
+                    accept=".docx,.pdf"
+                    onChange={(e) => setTaskFile(e.target.files?.[0] || null)}
+                    className="hidden"
+                  />
+                </label>
+                {taskFile && (
+                  <button
+                    onClick={handleUploadTasks}
+                    className="bg-[#8b9a6b] hover:bg-[#9aab78] text-[#141414] px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
+                  >
+                    Parse Tasks
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-[#555] mt-3">
+                Download the template, fill in your projects and tasks, then upload it back. Or edit manually below.
+              </p>
+            </div>
+
+            {/* Projects & Tasks editor */}
             {template.projects.map((project) => (
-              <div key={project.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div key={project.id} className="bg-[#1a1a1a] rounded-2xl border border-[#2a2a2a] overflow-hidden">
                 {/* Project header */}
-                <div className="bg-gradient-to-r from-rose-50 to-pink-50 px-6 py-4 border-b border-gray-100">
+                <div className="bg-[#1e1e1e] px-6 py-4 border-b border-[#2a2a2a]">
                   <div className="flex items-center gap-3">
                     <div className="flex-1 space-y-2">
                       <input
-                        className="w-full bg-transparent text-sm font-semibold text-gray-800 focus:outline-none placeholder-gray-400"
+                        className="w-full bg-transparent text-sm font-semibold text-white focus:outline-none placeholder-[#555]"
                         placeholder="Project / Area Name"
                         value={project.name}
                         onChange={(e) => updateProject(project.id, "name", e.target.value)}
                       />
                       <div className="flex items-center gap-1">
                         <input
-                          className="flex-1 bg-transparent text-xs text-gray-500 focus:outline-none placeholder-gray-300"
+                          className="flex-1 bg-transparent text-xs text-[#8a8278] focus:outline-none placeholder-[#444]"
                           placeholder="Brief description of this responsibility area"
                           value={project.description}
                           onChange={(e) => updateProject(project.id, "description", e.target.value)}
@@ -563,12 +745,12 @@ export default function Home() {
                         />
                       </div>
                     </div>
-                    <span className="text-xs text-gray-400 flex-shrink-0">{project.tasks.length} tasks</span>
+                    <span className="text-xs text-[#666] flex-shrink-0">{project.tasks.length} tasks</span>
                   </div>
                 </div>
 
                 {/* Tasks */}
-                <div className="divide-y divide-gray-50">
+                <div className="divide-y divide-[#222]">
                   {project.tasks.map((task) => {
                     const taskKey = `${project.id}-${task.id}`;
                     const filled = getCompletionCount(task);
@@ -577,38 +759,36 @@ export default function Home() {
 
                     return (
                       <div key={task.id}>
-                        {/* Task row */}
                         <div
-                          className="flex items-center gap-3 px-6 py-3.5 cursor-pointer hover:bg-gray-50/50 transition-colors"
+                          className="flex items-center gap-3 px-6 py-3.5 cursor-pointer hover:bg-[#1e1e1e] transition-colors"
                           onClick={() => setExpandedTask(isExpanded ? null : taskKey)}
                         >
                           <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
                             filled === FIELD_CONFIG.length
-                              ? "bg-green-100 text-green-700"
+                              ? "bg-[#8b9a6b]/20 text-[#8b9a6b]"
                               : filled > 0
-                              ? "bg-amber-100 text-amber-700"
-                              : "bg-gray-100 text-gray-400"
+                              ? "bg-[#c4a55a]/15 text-[#c4a55a]"
+                              : "bg-[#252525] text-[#555]"
                           }`}>
                             {filled}/{FIELD_CONFIG.length}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm text-gray-800 truncate">{task.name || "Untitled task"}</p>
+                            <p className="text-sm text-[#d4cfc4] truncate">{task.name || "Untitled task"}</p>
                           </div>
                           <svg
-                            className={`w-4 h-4 text-gray-300 transition-transform flex-shrink-0 ${isExpanded ? "rotate-180" : ""}`}
+                            className={`w-4 h-4 text-[#444] transition-transform flex-shrink-0 ${isExpanded ? "rotate-180" : ""}`}
                             fill="none" stroke="currentColor" viewBox="0 0 24 24"
                           >
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                           </svg>
                         </div>
 
-                        {/* Expanded */}
                         {isExpanded && (
-                          <div className="px-6 pb-5 pt-1 bg-gray-50/30 space-y-4">
+                          <div className="px-6 pb-5 pt-1 bg-[#161616] space-y-4">
                             <div>
-                              <label className="block text-xs font-medium text-gray-500 mb-1">Task Name</label>
+                              <label className="block text-xs font-medium text-[#8a8278] mb-1">Task Name</label>
                               <input
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-rose-200"
+                                className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#8b9a6b]/40 placeholder-[#555]"
                                 value={task.name}
                                 onChange={(e) => updateTask(project.id, task.id, "name", e.target.value)}
                               />
@@ -616,9 +796,9 @@ export default function Home() {
                             <div>
                               <div className="flex items-start gap-2">
                                 <div className="flex-1">
-                                  <label className="block text-xs font-medium text-gray-500 mb-1">Description</label>
+                                  <label className="block text-xs font-medium text-[#8a8278] mb-1">Description</label>
                                   <AutoTextarea
-                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-rose-200"
+                                    className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#8b9a6b]/40 placeholder-[#555]"
                                     value={task.description}
                                     onChange={(v) => updateTask(project.id, task.id, "description", v)}
                                   />
@@ -634,9 +814,9 @@ export default function Home() {
                             <div className="grid grid-cols-2 gap-4">
                               {FIELD_CONFIG.map((field) => (
                                 <div key={field.key}>
-                                  <label className="block text-xs font-medium text-gray-500 mb-1">{field.label}</label>
+                                  <label className="block text-xs font-medium text-[#8a8278] mb-1">{field.label}</label>
                                   <input
-                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-rose-200"
+                                    className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#8b9a6b]/40 placeholder-[#555]"
                                     placeholder={field.placeholder}
                                     value={(task as any)[field.key]}
                                     onChange={(e) => updateTask(project.id, task.id, field.key, e.target.value)}
@@ -645,20 +825,19 @@ export default function Home() {
                               ))}
                             </div>
 
-                            {/* Delete task */}
-                            <div className="pt-3 border-t border-gray-100 flex justify-end">
+                            <div className="pt-3 border-t border-[#2a2a2a] flex justify-end">
                               {isDeleting ? (
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs text-red-600">Remove this task?</span>
+                                  <span className="text-xs text-red-400">Remove this task?</span>
                                   <button
                                     onClick={() => removeTask(project.id, task.id)}
-                                    className="text-xs bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600"
+                                    className="text-xs bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700"
                                   >
                                     Yes, remove
                                   </button>
                                   <button
                                     onClick={() => setConfirmDelete(null)}
-                                    className="text-xs text-gray-500 px-3 py-1 rounded-lg hover:bg-gray-100"
+                                    className="text-xs text-[#8a8278] px-3 py-1 rounded-lg hover:bg-[#2a2a2a]"
                                   >
                                     Cancel
                                   </button>
@@ -666,7 +845,7 @@ export default function Home() {
                               ) : (
                                 <button
                                   onClick={() => setConfirmDelete(taskKey)}
-                                  className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                                  className="text-xs text-[#555] hover:text-red-400 transition-colors"
                                 >
                                   Remove task
                                 </button>
@@ -679,27 +858,26 @@ export default function Home() {
                   })}
                 </div>
 
-                {/* Add task + remove project */}
-                <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between">
+                <div className="px-6 py-3 border-t border-[#2a2a2a] flex items-center justify-between">
                   <button
                     onClick={() => addTask(project.id)}
-                    className="text-xs text-rose-600 hover:text-rose-700 font-medium"
+                    className="text-xs text-[#8b9a6b] hover:text-[#b5c48e] font-medium"
                   >
                     + Add task
                   </button>
 
                   {confirmDelete === `project-${project.id}` ? (
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-red-600">Remove project and all tasks?</span>
+                      <span className="text-xs text-red-400">Remove project and all tasks?</span>
                       <button
                         onClick={() => removeProject(project.id)}
-                        className="text-xs bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600"
+                        className="text-xs bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700"
                       >
                         Yes, remove
                       </button>
                       <button
                         onClick={() => setConfirmDelete(null)}
-                        className="text-xs text-gray-500 px-3 py-1 rounded-lg hover:bg-gray-100"
+                        className="text-xs text-[#8a8278] px-3 py-1 rounded-lg hover:bg-[#2a2a2a]"
                       >
                         Cancel
                       </button>
@@ -707,7 +885,7 @@ export default function Home() {
                   ) : (
                     <button
                       onClick={() => setConfirmDelete(`project-${project.id}`)}
-                      className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                      className="text-xs text-[#555] hover:text-red-400 transition-colors"
                     >
                       Remove project
                     </button>
@@ -716,83 +894,193 @@ export default function Home() {
               </div>
             ))}
 
-            {/* Add project + generate */}
+            {/* Bottom actions */}
             <div className="flex gap-3">
               <button
                 onClick={addProject}
-                className="flex-shrink-0 bg-white border border-gray-200 text-gray-600 px-5 py-3 rounded-xl text-sm font-medium hover:border-rose-200 hover:text-rose-600 transition-all"
+                className="flex-shrink-0 bg-[#1e1e1e] border border-[#333] text-[#9a9284] px-5 py-3 rounded-xl text-sm font-medium hover:border-[#8b9a6b]/50 hover:text-[#8b9a6b] transition-all"
               >
                 + Add Project
               </button>
               <button
                 onClick={handleGenerate}
-                className="flex-1 bg-gradient-to-r from-rose-500 to-pink-500 text-white py-3 rounded-xl font-medium hover:from-rose-600 hover:to-pink-600 transition-all shadow-md shadow-rose-200"
+                className="flex-1 bg-[#8b9a6b] hover:bg-[#9aab78] text-[#141414] py-3 rounded-xl font-semibold transition-all"
               >
-                Generate SKILL.md
+                Generate JD, Tasks &amp; SKILL.md
               </button>
             </div>
           </div>
         )}
 
-        {/* Generating spinner */}
-        {step === "generating" && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-16 text-center">
-            <div className="animate-spin w-10 h-10 mx-auto mb-4">
-              <FlowerLogo size={40} />
-            </div>
-            <p className="text-gray-500 text-sm">Generating SKILL.md from your template...</p>
+        {/* Parsing tasks spinner */}
+        {step === "parsing_tasks" && (
+          <div className="bg-[#1a1a1a] rounded-2xl border border-[#2a2a2a] p-16 text-center">
+            <div className="w-10 h-10 mx-auto mb-4 rounded-full border-2 border-[#333] border-t-[#8b9a6b] animate-spin" />
+            <p className="text-[#8a8278] text-sm">Parsing task document...</p>
           </div>
         )}
 
-        {/* Step 3: Result */}
-        {step === "result" && (
-          <div className="space-y-4">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-8 py-5 border-b border-gray-100 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-800">Generated SKILL.md</h2>
-                <button
-                  onClick={() => setStep("template")}
-                  className="text-sm text-gray-500 hover:text-gray-700 px-4 py-1.5 rounded-lg"
-                >
-                  Back to template
-                </button>
-              </div>
-              <pre className="text-sm font-mono whitespace-pre-wrap text-gray-700 p-8 leading-relaxed">
-                {skillMd}
-              </pre>
-            </div>
+        {/* Generating spinner */}
+        {step === "generating" && (
+          <div className="bg-[#1a1a1a] rounded-2xl border border-[#2a2a2a] p-16 text-center">
+            <div className="w-10 h-10 mx-auto mb-4 rounded-full border-2 border-[#333] border-t-[#8b9a6b] animate-spin" />
+            <p className="text-[#8a8278] text-sm">Generating JD, Tasks, and SKILL.md...</p>
+          </div>
+        )}
 
-            {/* Download bar */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <p className="text-xs text-gray-400 mb-4 uppercase tracking-wide font-medium">Save & Download</p>
-              <div className="flex gap-3">
+        {/* ───── Step 3: Results ───── */}
+        {step === "result" && template && (
+          <div className="space-y-4">
+            {/* Action bar */}
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => setStep("tasks")}
+                className="flex items-center gap-2 text-sm text-[#666] hover:text-[#8b9a6b] px-4 py-2 rounded-lg hover:bg-[#1e1e1e] transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Back to Edit
+              </button>
+              <div className="flex gap-2">
                 <button
                   onClick={handleDownloadJd}
-                  className="flex-1 flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl text-sm font-medium transition-all"
+                  className="flex items-center gap-2 bg-[#1e1e1e] border border-[#333] hover:border-[#8b9a6b]/50 text-[#9a9284] hover:text-[#8b9a6b] px-4 py-2 rounded-xl text-sm font-medium transition-all"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  Download JD
+                  JD (.docx)
+                </button>
+                <button
+                  onClick={handleDownloadTasksDocx}
+                  className="flex items-center gap-2 bg-[#1e1e1e] border border-[#333] hover:border-[#8b9a6b]/50 text-[#9a9284] hover:text-[#8b9a6b] px-4 py-2 rounded-xl text-sm font-medium transition-all"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Tasks (.docx)
+                </button>
+                <button
+                  onClick={handleDownloadTasksJson}
+                  className="flex items-center gap-2 bg-[#1e1e1e] border border-[#333] hover:border-[#8b9a6b]/50 text-[#9a9284] hover:text-[#8b9a6b] px-4 py-2 rounded-xl text-sm font-medium transition-all"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Tasks (.json)
                 </button>
                 <button
                   onClick={handleDownloadSkillMd}
-                  className="flex-1 flex items-center justify-center gap-2 bg-rose-100 hover:bg-rose-200 text-rose-700 py-3 rounded-xl text-sm font-medium transition-all"
+                  className="flex items-center gap-2 bg-[#1e1e1e] border border-[#333] hover:border-[#8b9a6b]/50 text-[#9a9284] hover:text-[#8b9a6b] px-4 py-2 rounded-xl text-sm font-medium transition-all"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  Download SKILL.md
+                  SKILL.md
                 </button>
-                <button
-                  onClick={() => navigator.clipboard.writeText(skillMd)}
-                  className="flex-shrink-0 flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-600 px-5 py-3 rounded-xl text-sm font-medium transition-all"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  Copy
-                </button>
+              </div>
+            </div>
+
+            {/* Three preview panes */}
+            <div className="grid grid-cols-3 gap-4">
+              {/* JD Preview */}
+              <div className="bg-[#1a1a1a] rounded-2xl border border-[#2a2a2a] overflow-hidden flex flex-col">
+                <div className="px-5 py-3 border-b border-[#2a2a2a] bg-[#1e1e1e]">
+                  <h2 className="text-sm font-semibold text-[#d4cfc4]">Job Description</h2>
+                </div>
+                <div className="flex-1 overflow-auto max-h-[65vh] p-6" style={{ fontFamily: "Calibri, Carlito, sans-serif" }}>
+                  <h1 className="text-xl font-bold text-white text-center mb-4 pb-2 border-b-2 border-[#8b9a6b]">
+                    JOB DESCRIPTION
+                  </h1>
+                  <div className="space-y-0.5 mb-4 text-xs text-[#b8b0a2]">
+                    <p><span className="font-bold text-[#8b9a6b]">Employee:</span> {employeeName || "TBD"}</p>
+                    <p><span className="font-bold text-[#8b9a6b]">Job Title:</span> {template.job_title}</p>
+                    <p><span className="font-bold text-[#8b9a6b]">Department:</span> {template.department}</p>
+                  </div>
+                  <h2 className="text-sm font-bold text-white mt-4 mb-1 border-b border-[#333] pb-0.5">Summary</h2>
+                  <p className="text-xs text-[#a89f91] leading-relaxed mb-3">{template.summary}</p>
+                  {template.projects.map((project) => (
+                    <div key={project.id} className="mb-3">
+                      <h2 className="text-sm font-bold text-white mt-3 mb-1 border-b border-[#333] pb-0.5">
+                        {project.name}
+                      </h2>
+                      {project.description && (
+                        <p className="text-xs text-[#8a8278] mb-2">{project.description}</p>
+                      )}
+                      {project.tasks.map((task) => (
+                        <div key={task.id} className="ml-2 mb-2">
+                          <p className="text-xs font-bold text-[#d4cfc4]">{task.name}</p>
+                          {task.description && (
+                            <p className="text-xs text-[#8a8278] ml-2">{task.description}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                  {template.qualifications.length > 0 && (
+                    <div>
+                      <h2 className="text-sm font-bold text-white mt-3 mb-1 border-b border-[#333] pb-0.5">Qualifications</h2>
+                      <ul className="list-disc list-inside text-xs text-[#a89f91] space-y-0.5">
+                        {template.qualifications.map((q, i) => (
+                          <li key={i}>{q}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Tasks Preview */}
+              <div className="bg-[#1a1a1a] rounded-2xl border border-[#2a2a2a] overflow-hidden flex flex-col">
+                <div className="px-5 py-3 border-b border-[#2a2a2a] bg-[#1e1e1e]">
+                  <h2 className="text-sm font-semibold text-[#d4cfc4]">Projects &amp; Tasks</h2>
+                </div>
+                <div className="flex-1 overflow-auto max-h-[65vh] p-6" style={{ fontFamily: "Calibri, Carlito, sans-serif" }}>
+                  <h1 className="text-xl font-bold text-white text-center mb-4 pb-2 border-b-2 border-[#8b9a6b]">
+                    PROJECTS &amp; TASKS
+                  </h1>
+                  <div className="space-y-0.5 mb-4 text-xs text-[#b8b0a2]">
+                    <p><span className="font-bold text-[#8b9a6b]">Employee:</span> {employeeName || "TBD"}</p>
+                    <p><span className="font-bold text-[#8b9a6b]">Role:</span> {template.job_title}</p>
+                  </div>
+                  {template.projects.map((project) => (
+                    <div key={project.id} className="mb-4">
+                      <h2 className="text-sm font-bold text-white mt-3 mb-1 border-b border-[#333] pb-0.5">
+                        {project.name}
+                      </h2>
+                      {project.description && (
+                        <p className="text-xs text-[#8a8278] mb-2">{project.description}</p>
+                      )}
+                      {project.tasks.map((task) => (
+                        <div key={task.id} className="ml-2 mb-3 pl-2 border-l-2 border-[#333]">
+                          <p className="text-xs font-bold text-[#d4cfc4]">{task.name}</p>
+                          {task.description && (
+                            <p className="text-xs text-[#7a7268] mb-1">{task.description}</p>
+                          )}
+                          <div className="text-[11px] text-[#666] space-y-0.5">
+                            {task.frequency && <p><span className="font-medium text-[#8a8278]">Frequency:</span> {task.frequency}</p>}
+                            {task.tools_systems && <p><span className="font-medium text-[#8a8278]">Tools:</span> {task.tools_systems}</p>}
+                            {task.file_paths && <p><span className="font-medium text-[#8a8278]">Files:</span> {task.file_paths}</p>}
+                            {task.contacts && <p><span className="font-medium text-[#8a8278]">Contacts:</span> {task.contacts}</p>}
+                            {task.kpi && <p><span className="font-medium text-[#8a8278]">KPI:</span> {task.kpi}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* SKILL.md Preview */}
+              <div className="bg-[#1a1a1a] rounded-2xl border border-[#2a2a2a] overflow-hidden flex flex-col">
+                <div className="px-5 py-3 border-b border-[#2a2a2a] bg-[#1e1e1e] flex items-center justify-between">
+                  <h2 className="text-sm font-semibold text-[#d4cfc4]">SKILL.md</h2>
+                  <span className="text-[10px] text-[#666] bg-[#252525] px-2 py-0.5 rounded">read-only</span>
+                </div>
+                <pre className="text-xs font-mono whitespace-pre-wrap text-[#a89f91] p-6 leading-relaxed flex-1 overflow-auto max-h-[65vh]">
+                  {skillMd}
+                </pre>
               </div>
             </div>
           </div>

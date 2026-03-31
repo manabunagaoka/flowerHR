@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
@@ -39,7 +40,7 @@ async def extract_skill_md(
     job_title: str,
     job_description: str,
     daily_tasks: list[str],
-    employee_name: str | None = None,
+    employee_name: Optional[str] = None,
 ) -> str:
     from datetime import date
 

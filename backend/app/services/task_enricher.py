@@ -1,5 +1,6 @@
 import os
 import json
+from typing import Optional
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
@@ -144,7 +145,7 @@ async def parse_jd_to_template(
 
 async def generate_skill_md_from_template(
     template: dict,
-    employee_name: str | None = None,
+    employee_name: Optional[str] = None,
 ) -> str:
     from datetime import date
 
